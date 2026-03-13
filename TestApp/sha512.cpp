@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sha.h"
+
 # define SHA384_DIGEST_LENGTH    48
 # define SHA512_DIGEST_LENGTH    64
 # define SHA512_CBLOCK   (SHA_LBLOCK*8)

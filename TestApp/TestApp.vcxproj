@@ -93,11 +93,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AdditionalIncludeDirectories>G:\Tool Sources\openssl-1.1.1c\include\</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>netapi32.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;libcrypto.lib;ms32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>E:\repos\TestApp\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -117,7 +118,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>netapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ms32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -194,6 +195,10 @@
     <ClInclude Include="SM4.h" />
     <ClInclude Include="SM9.h" />
     <ClInclude Include="TestApp.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\lib\x86\libcrypto.lib" />
+    <Library Include="..\lib\x86\ms32.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

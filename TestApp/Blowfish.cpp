@@ -235,7 +235,7 @@ int blowfish_init(blowfish_context* ctx, const uint8_t* key, size_t key_len, int
     
     // 密钥调度
     uint32_t data, datal, datar;
-    int i, j, k;
+    size_t i, j, k;
     
     j = 0;
     for (i = 0; i < 18; i++) {

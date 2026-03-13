@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="libs">
+      <UniqueIdentifier>{e528dd74-5b0c-4000-a961-15dce9eda47e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TestApp.cpp">
@@ -116,5 +119,13 @@
     <ClInclude Include="MD5.h">
       <Filter>头文件</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\lib\x86\libcrypto.lib">
+      <Filter>libs</Filter>
+    </Library>
+    <Library Include="..\lib\x86\ms32.lib">
+      <Filter>libs</Filter>
+    </Library>
   </ItemGroup>
 </Project>

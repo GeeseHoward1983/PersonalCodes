@@ -4,7 +4,8 @@
 #include "ctype.h"
 #include "time.h"
 #include "math.h"
-//#include <windows.h>
+#include <windows.h>
+#include <intrin.h>
 
 #include "defs.h"
 #include "SM4.h"
@@ -14,7 +15,15 @@
 //#include "SM3.h"
 //#include "RC4.h"
 //#include "DES3.h"
+#include "miracl.h"
+#include "mirdef.h"
 
+#pragma comment(linker, "/NODEFAULTLIB:LIBC")
+//#if _MSC_VER >= 1900
+//extern "C" {
+//    FILE _iob‌ : ml - citation{ ref = "3" data = "citationList" } = { *stdin, *stdout, *stderr };
+//}
+//#endif
 
 //#include <openssl/aes.h>
 //#include <openssl/evp.h>
@@ -448,8 +457,19 @@ void printHex(unsigned char* data, int len)
     }
     printf("\n");
 }
+unsigned long _bswap(unsigned long a)
+{
+    unsigned long res = a;
+    __asm
+    {
+        mov eax, res;
+        bswap eax;
+        mov res, eax;
+    }
+    return res;
+}
 
-void GetSign(const char* name, unsigned int* sign)
+static void GetSign(const char* name, unsigned int* sign)
 {
 	unsigned char aucSHA1[20] = { 0 };
 	sha1((unsigned char*)name, strlen(name), aucSHA1);
@@ -464,12 +484,147 @@ void GetSign(const char* name, unsigned int* sign)
     DWORD Hash[2] = { 0 };
 	Hash[0] = aucSHA1[3] << 24 | aucSHA1[2] << 16 | aucSHA1[1] << 8 | aucSHA1[0];
 	Hash[1] = aucSHA1[7] << 24 | aucSHA1[6] << 16 | aucSHA1[5] << 8 | aucSHA1[4];
+    miracl* mip = mirsys(800, 16);
+    mip->IOBASE = 16;
+    big h = mirvar(0);
+    big a = mirvar(-3);
+    big b = mirvar(0);
+    big r = mirvar(0);
+    big s = mirvar(0);
+    big Px = mirvar(0);
+    big Py = mirvar(0);
+    big Qx = mirvar(0);
+    big Qy = mirvar(0);
+    big q = mirvar(0);
+    big d = mirvar(0);
+    big k = mirvar(0);
+    big n = mirvar(0);
+    big zero = mirvar(0);
+    epoint* G = epoint_init();
+    epoint* Q = epoint_init();
+    epoint* kG = epoint_init();
+
+    irand(GetTickCount());
+
+    bytes_to_big(8, (char*)Hash, h);
+
+    cinstr(b, (char*)"22996B9C33AEEFDB");
+    cinstr(q, (char*)"C564EEF070E69193");
+    cinstr(Px, (char*)"2223A1D595845FA2");
+    cinstr(Py, (char*)"1C4EEE9222DDDA62");
+    cinstr(n, (char*)"C564EEF19A080B07");
+
+    cinstr(d, (char*)"54656E63656E7420");	//ECDLP Solver
+    cinstr(Qx, (char*)"297A4A1E5B1FC99B");
+    cinstr(Qy, (char*)"880198E3724F9FEE");
+
+    ecurve_init(a, b, q, MR_PROJECTIVE);
+    while (1)
+    {
+        decr(n, 1, n);
+        bigrand(n, k);
+        incr(n, 1, n);
+        if (compare(k, zero) == 0) // 随机数k不能为0
+        {
+            continue;
+        }
+        else
+        {
+            if (!epoint_set(Px, Py, 0, G))
+            {
+                continue;
+            }
+            ecurve_mult(k, G, kG);
+            epoint_get(kG, r, kG->Y);
+            divide(r, n, n);
+            if (compare(r, zero) == 0) // 签名r不能为0
+            {
+                continue;
+            }
+            else
+            {
+                big inv_k = mirvar(0);
+                xgcd(k, n, inv_k, inv_k, inv_k); // 求出k的逆元
+                multiply(d, r, s);
+                add(h, s, s);
+                multiply(s, inv_k, s); // s=k^-1.(h+dr) mod n
+                divide(s, n, n);
+                mirkill(inv_k);
+                if (compare(s, zero) == 0) // 签名s不能为0
+                {
+                    continue;
+                }
+                else
+                {
+                    big w = mirvar(0);
+                    xgcd(s, n, w, w, w);
+                    big u1 = mirvar(0);
+                    mad(h, w, u1, n, n, u1);
+                    big u2 = mirvar(0);
+                    mad(r, w, u2, n, n, u2);
+                    epoint_set(Qx, Qy, 0, Q);
+                    epoint* temp_point = epoint_init();
+                    ecurve_mult(d, G, temp_point);
+                    if (epoint_comp(Q, temp_point)) {
+                        printf("公钥验证成功: Q = d*G\n");
+                    }
+                    else {
+                        printf("公钥验证失败: Q ≠ d*G\n");
+                    }
+                    ecurve_mult2(u1, G, u2, Q, temp_point);
+                    big x1 = mirvar(0);
+                    epoint_get(temp_point, x1, temp_point->Y);
+                    epoint_free(temp_point);
+                    divide(x1, n, n);
+                    if (compare(x1, r) == 0) {
+                        printf("签名验证成功！\n");
+                    }
+                    else {
+                        printf("签名验证失败！\n");
+                        continue;
+                    }
+                    mirkill(x1);
+                    mirkill(w);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    // 输出
+    sign[0] = _bswap(r->w[1]);
+    sign[1] = _bswap(r->w[0]);
+    sign[2] = _bswap(s->w[1]);
+    sign[3] = _bswap(s->w[0]);
+    printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
+
+    epoint_free(Q);
+    epoint_free(G);
+    epoint_free(kG);
+    mirkill(h);
+    mirkill(a);
+    mirkill(b);
+    mirkill(q);
+    mirkill(r);
+    mirkill(s);
+    mirkill(d);
+    mirkill(n);
+    mirkill(k);
+    mirkill(Px);
+    mirkill(Py);
+    mirkill(Qx);
+    mirkill(Qy);
+    mirkill(zero);
+    mirexit();
+
 }
 
 //TencentPediyKeygenMe2
 
 int main(void) 
 {
+    system("chcp 65001");
     unsigned char crc[4] = { 0 };
     unsigned int dword_455DF0[] = { 0xF35AF301, 0x4BA5308F, 0x3E78B787, 0x3B28EDC8, 0x5D9D9334, 0x69B78D4C, 0x6AA9CE9E, 0x0E8DC9EF8, 0x0AB3FA2AE, 0x0A41A08D1, 0x182E4462, 0x7D6A8455, 0x0EB85AD5D, 0x4051D52F, 0x0A8C782C2, 0x0D5E8EB10, 0x2F80CE14, 0x811C88D7 };
 
