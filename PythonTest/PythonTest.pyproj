@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Include="ecc.py" />
     <Compile Include="PythonTest.py" />
+    <Compile Include="recover_seal.py" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
