@@ -576,15 +576,18 @@ static void GetSign(const char* name, unsigned int* sign)
                     epoint_get(temp_point, x1, temp_point->Y);
                     epoint_free(temp_point);
                     divide(x1, n, n);
+                    mirkill(u1);
+                    mirkill(u2);
+                    mirkill(w);
                     if (compare(x1, r) == 0) {
                         printf("签名验证成功！\n");
+                        mirkill(x1);
                     }
                     else {
+                        mirkill(x1);
                         printf("签名验证失败！\n");
                         continue;
                     }
-                    mirkill(x1);
-                    mirkill(w);
                     break;
                 }
             }
@@ -703,11 +706,6 @@ int main(void)
     sm4_context ctx;
     sm4_setkey_dec(&ctx, key);
     sm4_crypt_ecb(&ctx, SM4_DECRYPT, 16, encDest, base32Decode);
-   // for (int i = 0;i < 16;i++)
-   // {
-   //     printf("%02X ", base32Decode[i]);
-   // }
-   // printf("\n");
     size_t encodeLen = Base32_Encode(base32Decode, 20, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
     char* base32EncodeStr = (char*)malloc(encodeLen + 1);
     if (base32EncodeStr)
@@ -716,7 +714,6 @@ int main(void)
         Base32_Encode(base32Decode, 20, base32EncodeStr, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
 
         printf("%s\n", base32EncodeStr);
-   //     //free(base32EncodeStr);
         size_t decode_len = Base32_Decode(base32EncodeStr, encodeLen, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
         unsigned char* decDest = (unsigned char*)malloc(decode_len);
         if(decDest)
@@ -768,8 +765,6 @@ int main(void)
             free(decDest);
 			printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
         }
-   //     //unsigned char unk_46A554[] = { 0x29, 0x7A, 0x4A, 0x1E, 0x5B, 0x1F, 0xC9, 0x9B };
-   //     //unsigned char unk_46A55C[] = { 0x88, 0x01, 0x98, 0xE3, 0x72, 0x4F, 0x9F, 0xEE };
         free(base32EncodeStr);
     }
     return 0;
