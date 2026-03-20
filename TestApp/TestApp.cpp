@@ -4,10 +4,11 @@
 #include "ctype.h"
 #include "time.h"
 #include "math.h"
-#include <windows.h>
 #include <intrin.h>
 
 #include "defs.h"
+//#include <windows.h>
+
 #include "SM4.h"
 #include "Base.h"
 //#include "aes.h"
@@ -17,7 +18,12 @@
 //#include "DES3.h"
 #include "miracl.h"
 #include "mirdef.h"
-
+#define DECLSPEC_IMPORT __declspec(dllimport)
+#define WINBASEAPI DECLSPEC_IMPORT
+extern "C" WINBASEAPI DWORD
+__stdcall GetTickCount(
+    void
+);
 #pragma comment(linker, "/NODEFAULTLIB:LIBC")
 //#if _MSC_VER >= 1900
 //extern "C" {
@@ -442,6 +448,16 @@ static void sub_448710(_DWORD* table, _DWORD* a2)
     v5 = __ROL4__((a2[1] << 8) ^ ((a2[1] << 8) ^ (a2[1] >> 8)) & 0xFF00FF, 16);
     for (int i = 1; i < 17;)
     {
+		//printf("table[i] = %08x\n", table[i]);
+		//printf("LOBYTE(v4) = %02x\n", LOBYTE(v4));
+		//printf("dword_455E38[LOBYTE(v4) + 768] = %08x\n", dword_455E38[LOBYTE(v4) + 768]);
+		//printf("BYTE1(v4) = %02x\n", BYTE1(v4));
+		//printf("dword_455E38[BYTE1(v4) + 512] = %08x\n", dword_455E38[BYTE1(v4) + 512]);
+		//printf("BYTE2(v4) = %02x\n", BYTE2(v4));
+		//printf("dword_455E38[BYTE2(v4) + 256] = %08x\n", dword_455E38[BYTE2(v4) + 256]);
+		//printf("HIBYTE(v4) = %02x\n", HIBYTE(v4));
+		//printf("dword_455E38[HIBYTE(v4)] = %08x\n", dword_455E38[HIBYTE(v4)]);
+  //      printf("(dword_455E38[LOBYTE(v4) + 768] + (dword_455E38[BYTE1(v4) + 512] ^ (dword_455E38[BYTE2(v4) + 256] + dword_455E38[HIBYTE(v4)]))) = %08x\n", (dword_455E38[LOBYTE(v4) + 768] + (dword_455E38[BYTE1(v4) + 512] ^ (dword_455E38[BYTE2(v4) + 256] + dword_455E38[HIBYTE(v4)]))));
         v5 ^= table[i++] ^ (dword_455E38[LOBYTE(v4) + 768] + (dword_455E38[BYTE1(v4) + 512] ^ (dword_455E38[BYTE2(v4) + 256] + dword_455E38[HIBYTE(v4)])));
         v4 ^= table[i++] ^ (dword_455E38[LOBYTE(v5) + 768] + (dword_455E38[BYTE1(v5) + 512] ^ (dword_455E38[BYTE2(v5) + 256] + dword_455E38[HIBYTE(v5)])));
     }
@@ -449,7 +465,7 @@ static void sub_448710(_DWORD* table, _DWORD* a2)
     a2[1] = __ROL4__((v4 << 8) ^ ((v4 << 8) ^ (v4 >> 8)) & 0xFF00FF, 16);
 }
 
-void printHex(unsigned char* data, int len)
+static void printHex(unsigned char* data, int len)
 {
     for (int i = 0; i < len; i++)
     {
@@ -457,7 +473,7 @@ void printHex(unsigned char* data, int len)
     }
     printf("\n");
 }
-unsigned long _bswap(unsigned long a)
+static unsigned long _bswap(unsigned long a)
 {
     unsigned long res = a;
     __asm
@@ -625,148 +641,156 @@ static void GetSign(const char* name, unsigned int* sign)
 
 //TencentPediyKeygenMe2
 
-int main(void) 
+int main(void)
 {
     system("chcp 65001");
-    unsigned char crc[4] = { 0 };
-    unsigned int dword_455DF0[] = { 0xF35AF301, 0x4BA5308F, 0x3E78B787, 0x3B28EDC8, 0x5D9D9334, 0x69B78D4C, 0x6AA9CE9E, 0x0E8DC9EF8, 0x0AB3FA2AE, 0x0A41A08D1, 0x182E4462, 0x7D6A8455, 0x0EB85AD5D, 0x4051D52F, 0x0A8C782C2, 0x0D5E8EB10, 0x2F80CE14, 0x811C88D7 };
+     unsigned char crc[4] = { 0 };
+     unsigned int dword_455DF0[] = { 0xF35AF301, 0x4BA5308F, 0x3E78B787, 0x3B28EDC8, 0x5D9D9334, 0x69B78D4C, 0x6AA9CE9E, 0x0E8DC9EF8, 0x0AB3FA2AE, 0x0A41A08D1, 0x182E4462, 0x7D6A8455, 0x0EB85AD5D, 0x4051D52F, 0x0A8C782C2, 0x0D5E8EB10, 0x2F80CE14, 0x811C88D7 };
 
-    unsigned int calc_455DF0[18] = { 0 };
+     unsigned int calc_455DF0[18] = { 0 };
 
-    const char pKey[] = "DEADBEEF";
+     const char pKey[] = "DEADBEEF";
 
-    unsigned int pKey2[2] = { 0 };
+     unsigned int pKey2[2] = { 0 };
 
-    pKey2[0] = pKey[0] << 24 | pKey[1] << 16 | pKey[2] << 8 | pKey[3];
-    pKey2[1] = pKey[4] << 24 | pKey[5] << 16 | pKey[6] << 8 | pKey[7];
-    for (int i = 0;i < 18;i++)
-    {
-        calc_455DF0[i] = dword_455DF0[i] ^ pKey2[i % 2];
-    }
+     pKey2[0] = pKey[0] << 24 | pKey[1] << 16 | pKey[2] << 8 | pKey[3];
+     pKey2[1] = pKey[4] << 24 | pKey[5] << 16 | pKey[6] << 8 | pKey[7];
+     for (int i = 0;i < 18;i++)
+     {
+         calc_455DF0[i] = dword_455DF0[i] ^ pKey2[i % 2];
+     }
 
-    unsigned int v29[2] = { 0 };
-    for (int i = 0; i < 0x12; i += 2)
-    {
-        sub_448710(calc_455DF0, v29);
-        calc_455DF0[i] = v29[0];
-        calc_455DF0[i + 1] = v29[1];
-    }
-    for (int i = 0; i < 1024; i += 2)
-    {
-        sub_448710(calc_455DF0, v29);
-        dword_455E38[i] = v29[0];
-        dword_455E38[i + 1] = v29[1];
-    }
+     unsigned int v29[2] = { 0 };
+     for (int i = 0; i < 0x12; i += 2)
+     {
+         sub_448710(calc_455DF0, v29);
+         calc_455DF0[i] = v29[0];
+         calc_455DF0[i + 1] = v29[1];
+     }
+     for (int i = 0; i < 1024; i += 2)
+     {
+         sub_448710(calc_455DF0, v29);
+         dword_455E38[i] = v29[0];
+         dword_455E38[i + 1] = v29[1];
+     }
 
-    unsigned char crcReal[8] = { 0 };
-    unsigned int sign[4] = { 0 };
-    GetSign("KCTF", sign);
-    unsigned char encDest[16] = { 0 };
-    *((unsigned int *)crc) = sign[0] ^ sign[1] ^ sign[2] ^ sign[3];
-    int flag = 1;
-    if (flag)
-    {
-        unsigned int tmp = 0;
-        for (int i = 0; i < 9;i++)
-        {
-            tmp = calc_455DF0[i];
-            calc_455DF0[i] = calc_455DF0[17 - i];
-            calc_455DF0[17 - i] = tmp;
-        }
-    }
-    flag = 1;
-    memcpy(crcReal, crc, 4);
-    sign[0] ^= *((unsigned int*)crcReal);
-    sign[1] ^= *((unsigned int*)(crcReal + 4));
-    sub_448710(calc_455DF0, sign);
-    memcpy(crcReal, sign, 8);
-    sign[2] ^= *((unsigned int*)crcReal);
-    sign[3] ^= *((unsigned int*)(crcReal + 4));
-    sub_448710(calc_455DF0, sign + 2);
-    memcpy(encDest, sign, 16);
-    _WORD Xorkey = 0x011B;
-    for (int i = 0;i < 16;i++)
-    {
-        unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
-        printf("%02X, %02X\n", encDest[i], ret);
-        encDest[i] = ret;
-    }
+     unsigned char crcReal[8] = { 0 };
+     unsigned int sign[4] = { 0 };
+     GetSign("KCTF", sign);
+     unsigned char encDest[16] = { 0 };
+     *((unsigned int *)crc) = sign[0] ^ sign[1] ^ sign[2] ^ sign[3];
+     int flag = 1;
+     if (flag)
+     {
+         unsigned int tmp = 0;
+         for (int i = 0; i < 9;i++)
+         {
+             tmp = calc_455DF0[i];
+             calc_455DF0[i] = calc_455DF0[17 - i];
+             calc_455DF0[17 - i] = tmp;
+         }
+     }
+     flag = 1;
+     memcpy(crcReal, crc, 4);
+     sign[0] ^= *((unsigned int*)crcReal);
+     sign[1] ^= *((unsigned int*)(crcReal + 4));
+     sub_448710(calc_455DF0, sign);
+     memcpy(crcReal, sign, 8);
+     sign[2] ^= *((unsigned int*)crcReal);
+     sign[3] ^= *((unsigned int*)(crcReal + 4));
+     sub_448710(calc_455DF0, sign + 2);
+     memcpy(encDest, sign, 16);
+     _WORD Xorkey = 0x011B;
+     for (int i = 0;i < 16;i++)
+     {
+         unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
+         printf("%02X, %02X\n", encDest[i], ret);
+         encDest[i] = ret;
+     }
 
-    for (int i = 0;i < 4;i++)
-    {
-        unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
-        printf("%02X, %02X\n", crc[i], ret);
-        crc[i] = ret;
-    }
+     for (int i = 0;i < 4;i++)
+     {
+         unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
+         printf("%02X, %02X\n", crc[i], ret);
+         crc[i] = ret;
+     }
 
-    unsigned char base32Decode[20] = { 0 };
-    memcpy(base32Decode + 16, crc, 4);
+     unsigned char base32Decode[20] = { 0 };
+     memcpy(base32Decode + 16, crc, 4);
 
-    unsigned char key[] = "Security@Tencent";
-    sm4_context ctx;
-    sm4_setkey_dec(&ctx, key);
-    sm4_crypt_ecb(&ctx, SM4_DECRYPT, 16, encDest, base32Decode);
-    size_t encodeLen = Base32_Encode(base32Decode, 20, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-    char* base32EncodeStr = (char*)malloc(encodeLen + 1);
-    if (base32EncodeStr)
-    {
-        memset(base32EncodeStr, 0, encodeLen + 1);
-        Base32_Encode(base32Decode, 20, base32EncodeStr, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+     unsigned char key[] = "Security@Tencent";
+     sm4_context ctx;
+     sm4_setkey_dec(&ctx, key);
+     sm4_crypt_ecb(&ctx, SM4_DECRYPT, 16, encDest, base32Decode);
+     size_t encodeLen = Base32_Encode(base32Decode, 20, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+     char* base32EncodeStr = (char*)malloc(encodeLen + 1);
+     if (base32EncodeStr)
+     {
+         memset(base32EncodeStr, 0, encodeLen + 1);
+         Base32_Encode(base32Decode, 20, base32EncodeStr, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+		 char code[36] = { 0 };
+		 code[8] = '-';
+		 code[17] = '-';
+		 code[26] = '-';
+		 memcpy(code, base32EncodeStr, 8);
+		 memcpy(code + 9, base32EncodeStr + 8, 8);
+		 memcpy(code + 18, base32EncodeStr + 16, 8);
+		 memcpy(code + 27, base32EncodeStr + 24, 8);
+         printf("%s\n", base32EncodeStr);
+         printf("%s\n", code);
+         size_t decode_len = Base32_Decode(base32EncodeStr, encodeLen, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+         unsigned char* decDest = (unsigned char*)malloc(decode_len);
+         if(decDest)
+         {
+             Base32_Decode(base32EncodeStr, encodeLen, decDest, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+             for (size_t i = 0; i < decode_len; i++)
+             {
+                 printf("%02X ", decDest[i]);
+             }
+             printf("\n");
 
-        printf("%s\n", base32EncodeStr);
-        size_t decode_len = Base32_Decode(base32EncodeStr, encodeLen, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-        unsigned char* decDest = (unsigned char*)malloc(decode_len);
-        if(decDest)
-        {
-            Base32_Decode(base32EncodeStr, encodeLen, decDest, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-            for (size_t i = 0; i < decode_len; i++)
-            {
-                printf("%02X ", decDest[i]);
-            }
-            printf("\n");
+             sm4_setkey_enc(&ctx, key);
+             int encLen = sm4_crypt_ecb(&ctx, SM4_ENCRYPT, 16, decDest, encDest);
+             for (int i = 0; i < 16; i++)
+             {
+                 unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
+                 printf("%02X, %02X\n", encDest[i], ret);
+                 encDest[i] = ret;
+             }
 
-            sm4_setkey_enc(&ctx, key);
-            int encLen = sm4_crypt_ecb(&ctx, SM4_ENCRYPT, 16, decDest, encDest);
-            for (int i = 0; i < 16; i++)
-            {
-                unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
-                printf("%02X, %02X\n", encDest[i], ret);
-                encDest[i] = ret;
-            }
+             for (int i = 0; i < 4; i++)
+             {
+                 unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
+                 printf("%02X, %02X\n", crc[i], ret);
+                 crc[i] = ret;
+             }
 
-            for (int i = 0; i < 4; i++)
-            {
-                unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
-                printf("%02X, %02X\n", crc[i], ret);
-                crc[i] = ret;
-            }
-
-            if (flag)
-            {
-                unsigned int tmp = 0;
-                for (int i = 0; i < 9; i++)
-                {
-                    tmp = calc_455DF0[i];
-                    calc_455DF0[i] = calc_455DF0[17 - i];
-                    calc_455DF0[17 - i] = tmp;
-                }
-                flag = 1;
-            }
-            memset(crcReal, 0, 8);
-            memcpy(crcReal, crc, 4);
-            memcpy(sign, encDest, 16);
-            sub_448710(calc_455DF0, sign);
-            sign[0] ^= *((unsigned int*)crcReal);
-            sign[1] ^= *((unsigned int*)(crcReal + 4));
-            memcpy(crcReal, encDest, 8);
-            sub_448710(calc_455DF0, sign + 2);
-            sign[2] ^= *((unsigned int*)crcReal);
-            sign[3] ^= *((unsigned int*)(crcReal + 4));
-            free(decDest);
-			printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
-        }
-        free(base32EncodeStr);
-    }
+             if (flag)
+             {
+                 unsigned int tmp = 0;
+                 for (int i = 0; i < 9; i++)
+                 {
+                     tmp = calc_455DF0[i];
+                     calc_455DF0[i] = calc_455DF0[17 - i];
+                     calc_455DF0[17 - i] = tmp;
+                 }
+                 flag = 1;
+             }
+             memset(crcReal, 0, 8);
+             memcpy(crcReal, crc, 4);
+             memcpy(sign, encDest, 16);
+             sub_448710(calc_455DF0, sign);
+             sign[0] ^= *((unsigned int*)crcReal);
+             sign[1] ^= *((unsigned int*)(crcReal + 4));
+             memcpy(crcReal, encDest, 8);
+             sub_448710(calc_455DF0, sign + 2);
+             sign[2] ^= *((unsigned int*)crcReal);
+             sign[3] ^= *((unsigned int*)(crcReal + 4));
+             free(decDest);
+             printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
+         }
+         free(base32EncodeStr);
+     }
     return 0;
 }
 
@@ -779,22 +803,7 @@ int main(void)
 static const unsigned char charset[] = { "[@WP!3C75LfM8iwR2UO;(N>A6*&ut%#SIBhY1$j|kD{]0lx,.md9<4HayrzbXsg_" };
 
 /*********************** FUNCTION DEFINITIONS ***********************/
-//unsigned char revchar(char ch)
-//{
-//    if (ch >= 'A' && ch <= 'Z')
-//        ch -= 'A';
-//    else if (ch >= 'a' && ch <= 'z')
-//        ch = ch - 'a' + 26;
-//    else if (ch >= '0' && ch <= '9')
-//        ch = ch - '0' + 52;
-//    else if (ch == '+')
-//        ch = 62;
-//    else if (ch == '/')
-//        ch = 63;
-//
-//    return(ch);
-//}
-unsigned char revchar(char ch)
+static unsigned char revchar(char ch)
 {
 	for (int i = 0; i < 64; i++)
     {
@@ -803,7 +812,7 @@ unsigned char revchar(char ch)
     }
     return 0;
 }
-size_t base64_decode(const char in[], unsigned char out[], size_t len)
+static size_t base64_decode(const char in[], unsigned char out[], size_t len)
 {
     size_t idx, idx2, blks, blk_ceiling, left_over;
 
