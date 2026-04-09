@@ -25,6 +25,72 @@ __stdcall GetTickCount(
     void
 );
 #pragma comment(linker, "/NODEFAULTLIB:LIBC")
+/****************************** MACROS ******************************/
+#define NEWLINE_INVL 76
+
+/**************************** VARIABLES *****************************/
+// Note: To change the charset to a URL encoding, replace the '+' and '/' with '*' and '-'
+static const unsigned char charset[] = { "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" };
+//static const unsigned char charset[] = { "[@WP!3C75LfM8iwR2UO;(N>A6*&ut%#SIBhY1$j|kD{]0lx,.md9<4HayrzbXsg_" };
+
+/*********************** FUNCTION DEFINITIONS ***********************/
+static unsigned char revchar(char ch)
+{
+    for (int i = 0; i < 64; i++)
+    {
+        if (ch == charset[i])
+            return i;
+    }
+    return 0;
+}
+static size_t base64_decode(const char in[], unsigned char out[], size_t len)
+{
+    size_t idx, idx2, blks, blk_ceiling, left_over;
+
+    if (in[len - 1] == '=')
+        len--;
+    if (in[len - 1] == '=')
+        len--;
+
+    blks = len / 4;
+    left_over = len % 4;
+
+    if (out == nullptr) {
+        if (len >= 77 && in[NEWLINE_INVL] == '\n')   // Verify that newlines where used.
+            len -= len / (NEWLINE_INVL + 1);
+        blks = len / 4;
+        left_over = len % 4;
+
+        idx = blks * 3;
+        if (left_over == 2)
+            idx++;
+        else if (left_over == 3)
+            idx += 2;
+    }
+    else {
+        blk_ceiling = blks * 4;
+        for (idx = 0, idx2 = 0; idx2 < blk_ceiling; idx += 3, idx2 += 4) {
+            if (in[idx2] == '\n')
+                idx2++;
+            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
+            out[idx + 1] = (revchar(in[idx2 + 1]) << 4) | (revchar(in[idx2 + 2]) >> 2);
+            out[idx + 2] = (revchar(in[idx2 + 2]) << 6) | revchar(in[idx2 + 3]);
+        }
+
+        if (left_over == 2) {
+            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
+            idx++;
+        }
+        else if (left_over == 3) {
+            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
+            out[idx + 1] = (revchar(in[idx2 + 1]) << 4) | (revchar(in[idx2 + 2]) >> 2);
+            idx += 2;
+        }
+    }
+
+    return(idx);
+}
+
 //#if _MSC_VER >= 1900
 //extern "C" {
 //    FILE _iob‌ : ml - citation{ ref = "3" data = "citationList" } = { *stdin, *stdout, *stderr };
@@ -505,7 +571,7 @@ static void GetSign(const char* name, unsigned int* sign)
     big h = mirvar(0);
     big a = mirvar(-3);
     big b = mirvar(0);
-    big r = mirvar(0);
+    big r = mirvar(0x01000000);
     big s = mirvar(0);
     big Px = mirvar(0);
     big Py = mirvar(0);
@@ -519,7 +585,7 @@ static void GetSign(const char* name, unsigned int* sign)
     epoint* G = epoint_init();
     epoint* Q = epoint_init();
     epoint* kG = epoint_init();
-
+	//big tartgetr = mirvar(1);
     irand(GetTickCount());
 
     bytes_to_big(8, (char*)Hash, h);
@@ -540,6 +606,7 @@ static void GetSign(const char* name, unsigned int* sign)
         decr(n, 1, n);
         bigrand(n, k);
         incr(n, 1, n);
+		printf("k->w[0] = %08x, k->w[1] = %08x\n", k->w[0], k->w[1]);
         if (compare(k, zero) == 0) // 随机数k不能为0
         {
             continue;
@@ -553,6 +620,7 @@ static void GetSign(const char* name, unsigned int* sign)
             ecurve_mult(k, G, kG);
             epoint_get(kG, r, kG->Y);
             divide(r, n, n);
+            printf("r->w[0] = %08x, r->w[1] = %08x\n", r->w[0], r->w[1]);
             if (compare(r, zero) == 0) // 签名r不能为0
             {
                 continue;
@@ -604,6 +672,11 @@ static void GetSign(const char* name, unsigned int* sign)
                         printf("签名验证失败！\n");
                         continue;
                     }
+					//if (compare(r, tartgetr) == 0)
+     //               {
+     //                   printf("找到目标签名！\n");
+     //                   break;
+     //               }
                     break;
                 }
             }
@@ -640,222 +713,506 @@ static void GetSign(const char* name, unsigned int* sign)
 }
 
 //TencentPediyKeygenMe2
+static unsigned char __fastcall decrypt_maze(unsigned char* encryptedMaze, int realPos)
+{
+    _BYTE Key[] = "tgrddf55";
+    return encryptedMaze[realPos] ^ Key[realPos % 8];
+}
+static unsigned char __fastcall Calc_maze(unsigned char* encryptedMaze, int row, int col)
+{
+    return decrypt_maze(encryptedMaze, (99 * row + col) / 8) >> (7 - (99 * row + col) % 8) & 1;
+}
+static unsigned char __fastcall Set_maze(unsigned char* encryptedMaze, int row, int col)
+{
+    int v4; // [rsp+1Ch] [rbp-4h]
 
+    v4 = Calc_maze(encryptedMaze, row, col);
+    if (!v4)
+        return 32;
+    if (v4 == 1)
+        return 49;
+    return 101;
+}
+unsigned char encryptedMaze[] = { 0x8b, 0x98, 0x8d, 0x9b, 0x9b, 0x99, 0xca, 0xca, 0x8b, 0x98, 0x8d, 0x9b, 0x94, 0x22, 0x74, 0x25,
+        0x70, 0x26, 0x76, 0x64, 0x74, 0x72, 0x35, 0x75, 0x63, 0xcc, 0xd9, 0xce, 0x9a, 0xcd, 0xdb, 0x8a,
+        0x8e, 0x9d, 0xcd, 0xcf, 0x9e, 0xb3, 0x20, 0x20, 0x34, 0x23, 0x62, 0x35, 0x60, 0x22, 0x61, 0x71,
+        0x30, 0x3d, 0xc8, 0xde, 0xcf, 0x99, 0xcf, 0xce, 0xca, 0xd9, 0xc8, 0xcf, 0x9a, 0xdd, 0x24, 0x64,
+        0x31, 0x26, 0x32, 0x35, 0x65, 0x72, 0x24, 0x20, 0x30, 0x36, 0x1d, 0xce, 0x8b, 0xcd, 0x9e, 0xcf,
+        0xcb, 0xc9, 0x99, 0x8a, 0xcf, 0xcd, 0x99, 0x70, 0x25, 0x73, 0x37, 0x25, 0x34, 0x72, 0x64, 0x74,
+        0x60, 0x72, 0x67, 0x8f, 0xca, 0x9c, 0xce, 0x9e, 0xdf, 0x99, 0x98, 0x9f, 0x8f, 0x8c, 0x9b, 0x84,
+        0x30, 0x37, 0x32, 0x71, 0x35, 0x26, 0x24, 0x74, 0x25, 0x62, 0x26, 0x32, 0x8a, 0x8c, 0xca, 0xcf,
+        0xdf, 0x8c, 0x8c, 0x8f, 0xce, 0x9c, 0x8f, 0xdf, 0xb0, 0x76, 0x22, 0x65, 0x75, 0x63, 0x31, 0x24,
+        0x30, 0x23, 0x22, 0x21, 0x7b, 0x9c, 0xdf, 0xca, 0xdf, 0x89, 0xcc, 0xde, 0x8f, 0x89, 0x8a, 0xcb,
+        0xcf, 0x66, 0x33, 0x34, 0x71, 0x77, 0x75, 0x61, 0x25, 0x26, 0x76, 0x64, 0x34, 0x08, 0x9b, 0xdf,
+        0x8e, 0x9d, 0x9d, 0xde, 0xde, 0x8c, 0xda, 0x8a, 0x9e, 0x8a, 0x66, 0x25, 0x25, 0x23, 0x64, 0x31,
+        0x25, 0x23, 0x33, 0x71, 0x65, 0x33, 0x9a, 0xda, 0x9b, 0xc9, 0xd8, 0x8a, 0xcf, 0x8d, 0xda, 0x9f,
+        0xdb, 0x8d, 0xc6, 0x61, 0x60, 0x72, 0x65, 0x71, 0x21, 0x66, 0x37, 0x71, 0x30, 0x77, 0x23, 0xcf,
+        0xda, 0x9c, 0xd9, 0x9e, 0x8e, 0x9d, 0xdf, 0xdf, 0xde, 0x9d, 0x8c, 0xb5, 0x30, 0x26, 0x70, 0x75,
+        0x35, 0x26, 0x32, 0x35, 0x30, 0x27, 0x65, 0x6f, 0xde, 0xc8, 0x88, 0x8f, 0x9b, 0x99, 0x9e, 0xdb,
+        0x9a, 0x99, 0x98, 0x8f, 0x71, 0x33, 0x25, 0x64, 0x30, 0x77, 0x37, 0x21, 0x71, 0x72, 0x24, 0x30,
+        0x0f, 0xdc, 0xd8, 0x9e, 0x8a, 0xdc, 0xde, 0x8f, 0xda, 0xc9, 0xdc, 0x9b, 0xc9, 0x77, 0x20, 0x71,
+        0x25, 0x76, 0x66, 0x20, 0x30, 0x23, 0x71, 0x25, 0x71, 0xdc, 0xc8, 0x8e, 0xdf, 0xc9, 0x8b, 0xce,
+        0xcf, 0x89, 0xd9, 0x9b, 0xcb, 0xd7, 0x65, 0x70, 0x20, 0x23, 0x63, 0x61, 0x61, 0x63, 0x20, 0x31,
+        0x61, 0x20, 0xd9, 0x9a, 0xde, 0xdd, 0xce, 0x9b, 0xcb, 0xd9, 0xdc, 0xdf, 0xdf, 0xcd, 0xf1, 0x24,
+        0x60, 0x33, 0x72, 0x21, 0x74, 0x72, 0x61, 0x24, 0x31, 0x62, 0x29, 0x9e, 0xca, 0xdc, 0xca, 0xde,
+        0xce, 0xdd, 0x98, 0x9b, 0xcf, 0xd9, 0x9e, 0x74, 0x65, 0x62, 0x32, 0x71, 0x70, 0x32, 0x64, 0x64,
+        0x70, 0x27, 0x63, 0x0f, 0xdb, 0x88, 0x9a, 0xcf, 0xce, 0xdd, 0x98, 0xce, 0xcf, 0x98, 0xcf, 0xd8,
+        0x65, 0x62, 0x27, 0x64, 0x20, 0x32, 0x70, 0x20, 0x21, 0x67, 0x22, 0x35, 0xdf, 0xc9, 0x9f, 0x8a,
+        0xcb, 0x89, 0xcc, 0xcf, 0xce, 0xd9, 0x9f, 0xce, 0xc0, 0x73, 0x63, 0x30, 0x74, 0x22, 0x74, 0x60,
+        0x61, 0x33, 0x76, 0x30, 0x22, 0xd8, 0xce, 0xdf, 0xcf, 0x8d, 0xdd, 0xce, 0x9e, 0xcd, 0x8a, 0xcf,
+        0xcf, 0xb3, 0x62, 0x65, 0x60, 0x23, 0x61, 0x60, 0x34, 0x32, 0x77, 0x64, 0x70, 0x7c, 0x9f, 0xca,
+        0x9b, 0x9d, 0xd8, 0x8e, 0xcb, 0x9c, 0x8a, 0x9a, 0x8a, 0x9c, 0x67, 0x74, 0x65, 0x76, 0x64, 0x64,
+        0x71, 0x76, 0x23, 0x75, 0x60, 0x22, 0x4b, 0xcb, 0x8b, 0x89, 0x89, 0x8a, 0x9a, 0xcc, 0x9f, 0x9b,
+        0x9e, 0x89, 0xce, 0x75, 0x74, 0x23, 0x24, 0x31, 0x65, 0x76, 0x67, 0x30, 0x75, 0x23, 0x24, 0x8b,
+        0xdb, 0xdd, 0xdc, 0xde, 0x9a, 0xc9, 0xcb, 0x9b, 0x9b, 0x89, 0xdc, 0xd0, 0x71, 0x62, 0x71, 0x64,
+        0x24, 0x76, 0x76, 0x75, 0x75, 0x63, 0x20, 0x23, 0x8f, 0xcc, 0xcc, 0x8e, 0xce, 0x99, 0xdb, 0x8e,
+        0x9a, 0x9d, 0xdc, 0xca, 0xa5, 0x63, 0x21, 0x64, 0x21, 0x37, 0x66, 0x21, 0x21, 0x66, 0x71, 0x60,
+        0x6a, 0xdc, 0x88, 0xce, 0x9e, 0xcd, 0xcf, 0xda, 0xda, 0xd8, 0x8d, 0x8e, 0x8b, 0x77, 0x35, 0x61,
+        0x25, 0x32, 0x33, 0x20, 0x20, 0x36, 0x71, 0x21, 0x34, 0x08, 0xcd, 0x9e, 0x9e, 0xdc, 0xde, 0x9e,
+        0x9e, 0x8c, 0xd8, 0xde, 0xdb, 0x8a, 0x74, 0x35, 0x35, 0x76, 0x33, 0x30, 0x61, 0x22, 0x31, 0x64,
+        0x31, 0x62, 0xc9, 0x8b, 0x9b, 0xd9, 0x9a, 0xdf, 0xcf, 0xc9, 0x9d, 0x9f, 0xcb, 0xcc, 0x81, 0x74,
+        0x30, 0x73, 0x62, 0x21, 0x70, 0x22, 0x64, 0x31, 0x60, 0x66, 0x24, 0xdf, 0xce, 0xdc, 0xde, 0xdf,
+        0xcf, 0xdc, 0x9c, 0x8a, 0x9a, 0x99, 0xdb, 0xe5, 0x30, 0x36, 0x23, 0x60, 0x35, 0x77, 0x31, 0x20,
+        0x30, 0x37, 0x33, 0x7f, 0x9f, 0xdd, 0xdf, 0xce, 0x8f, 0xdc, 0xcc, 0xda, 0xca, 0xcd, 0xde, 0x9a,
+        0x65, 0x26, 0x37, 0x65, 0x25, 0x62, 0x24, 0x21, 0x60, 0x22, 0x33, 0x21, 0x1a, 0xc9, 0x9f, 0x8a,
+        0xcf, 0xd8, 0x89, 0xca, 0x8a, 0x89, 0x9e, 0xda, 0xd8, 0x32, 0x66, 0x24, 0x20, 0x36, 0x74, 0x60,
+        0x74, 0x26, 0x67, 0x60, 0x61, 0xcc, 0x9f, 0xda, 0x9f, 0xdd, 0x99, 0xce, 0xdb, 0x89, 0x9f, 0x8b,
+        0x8b, 0xd3, 0x37, 0x21, 0x65, 0x66, 0x70, 0x64, 0x65, 0x63, 0x33, 0x34, 0x25, 0x60, 0xca, 0x9b,
+        0xdb, 0x88, 0x8c, 0x8f, 0x9f, 0xd8, 0xda, 0x8e, 0x9f, 0x89, 0xb3, 0x60, 0x71, 0x62, 0x31, 0x71,
+        0x34, 0x73, 0x32, 0x70, 0x21, 0x27, 0x2a, 0x8a, 0x8a, 0x89, 0x8c, 0xda, 0xca, 0xd8, 0x9a, 0xcb,
+        0xce, 0xcc, 0x89, 0x70, 0x64, 0x77, 0x25, 0x71, 0x60, 0x33, 0x66, 0x74, 0x74, 0x33, 0x31, 0x5f,
+        0xcb, 0x89, 0x9c, 0xdf, 0xdb, 0x8c, 0x8b, 0x8f, 0x8f, 0x8d, 0xcc, 0xd9, 0x30, 0x72, 0x64, 0x61,
+        0x25, 0x62, 0x26, 0x75, 0x25, 0x77, 0x65, 0x24, 0xce, 0xdd, 0x98, 0x8e, 0xde, 0xc8, 0x8f, 0x8a,
+        0x9b, 0xd9, 0x89, 0x9b, 0xd5, 0x22, 0x64, 0x70, 0x34, 0x33, 0x32, 0x20, 0x60, 0x62, 0x25, 0x75,
+        0x72, 0xc8, 0xc8, 0x8a, 0xcb, 0x9d, 0xda, 0xce, 0xce, 0x98, 0xc8, 0x9f, 0x9a, 0xb3, 0x31, 0x24,
+        0x70, 0x27, 0x32, 0x25, 0x75, 0x26, 0x31, 0x65, 0x30, 0x3d, 0xdd, 0x9a, 0x9a, 0x8d, 0xde, 0x8e,
+        0xca, 0xc8, 0x8c, 0x9f, 0xde, 0xdd, 0x70, 0x35, 0x34, 0x22, 0x63, 0x70, 0x34, 0x33, 0x30, 0x25,
+        0x30, 0x33, 0x1d, 0xcb, 0xdb, 0xd8, 0xce, 0x8f, 0xcf, 0x89, 0xdc, 0xca, 0x9f, 0xdc, 0x88, 0x24,
+        0x64, 0x77, 0x32, 0x20, 0x30, 0x22, 0x21, 0x64, 0x24, 0x33, 0x27, 0xce, 0x8e, 0x99, 0xda, 0xce,
+        0xca, 0xcd, 0x8d, 0xde, 0x8e, 0x9c, 0x8f, 0x80, 0x35, 0x27, 0x76, 0x75, 0x20, 0x73, 0x71, 0x31,
+        0x25, 0x26, 0x63, 0x72, 0xdb, 0x88, 0x8b, 0xcf, 0xcf, 0xd8, 0xd9, 0xdb, 0xce, 0xcd, 0x8b, 0xdb,
+        0xa4, 0x66, 0x66, 0x21, 0x74, 0x22, 0x24, 0x34, 0x61, 0x72, 0x26, 0x20, 0x3f, 0xd9, 0xca, 0x9b,
+        0xcb, 0x9c, 0xc9, 0xdb, 0x8e, 0xc8, 0x9f, 0x9b, 0x9f, 0x73, 0x66, 0x20, 0x70, 0x67, 0x30, 0x25,
+        0x25, 0x32, 0x66, 0x30, 0x61, 0x1c, 0x8f, 0x9e, 0x9a, 0xd9, 0xcd, 0xdf, 0x8e, 0x8d, 0x9b, 0xcf,
+        0xcb, 0xcb, 0x36, 0x30, 0x25, 0x66, 0x61, 0x34, 0x61, 0x32, 0x76, 0x24, 0x30, 0x63, 0x8a, 0xdf,
+        0x8f, 0x98, 0x89, 0xdb, 0xde, 0xcc, 0x8a, 0xca, 0x8f, 0xd8, 0xc2, 0x60, 0x30, 0x26, 0x31, 0x75,
+        0x65, 0x26, 0x62, 0x74, 0x60, 0x62, 0x32, 0xcb, 0x9e, 0xdd, 0x8c, 0xdf, 0x9f, 0xc8, 0xce, 0xcf,
+        0x8a, 0xd8, 0xcd, 0xa4, 0x75, 0x22, 0x64, 0x24, 0x35, 0x22, 0x63, 0x25, 0x34, 0x76, 0x24, 0x2e,
+        0x8a, 0x89, 0x88, 0xcb, 0xcf, 0xdd, 0x8b, 0x9a, 0xde, 0x9c, 0x88, 0xcf, 0x74, 0x22, 0x75, 0x61,
+        0x65, 0x76, 0x62, 0x71, 0x60, 0x22, 0x74, 0x24, 0x0e, 0x98, 0x9d, 0x9a, 0x9f, 0x9d, 0x8e, 0xcb,
+        0xdb, 0x99, 0x98, 0x9a, 0x99, 0x76, 0x24, 0x35, 0x24, 0x26, 0x62, 0x70, 0x20, 0x27, 0x30, 0x65,
+        0x65, 0xdd, 0x88, 0x9b, 0xce, 0x9c, 0x8e, 0xcf, 0xdb, 0x8c, 0xcc, 0xde, 0x9a, 0xd7, 0x74, 0x25,
+        0x60, 0x37, 0x22, 0x34, 0x20, 0x67, 0x61, 0x65, 0x31, 0x70, 0xd9, 0xda, 0x9e, 0x8d, 0xce, 0xcf,
+        0x8b, 0x9c, 0x98, 0xcf, 0x9a, 0xc8, 0xf0, 0x71, 0x24, 0x76, 0x63, 0x60, 0x30, 0x67, 0x74, 0x21,
+        0x34, 0x32, 0x68, 0xdf, 0x8e, 0x98, 0xcf, 0x8b, 0x9e, 0xdc, 0xd9, 0x8a, 0x8f, 0x8c, 0x9a, 0x61,
+        0x34, 0x37, 0x23, 0x35, 0x61, 0x27, 0x60, 0x25, 0x65, 0x23, 0x36, 0x1e, 0xdf, 0x98, 0xdb, 0x9f,
+        0xca, 0xc8, 0x98, 0xdf, 0x9a, 0x88, 0xca, 0xd9, 0x35, 0x66, 0x66, 0x75, 0x30, 0x73, 0x34, 0x74,
+        0x34, 0x22, 0x72, 0x61, 0xdb, 0x89, 0x9f, 0xca, 0x9e, 0xd9, 0xc9, 0x8b, 0xce, 0x89, 0x9a, 0xcb,
+        0xc4, 0x67, 0x63, 0x64, 0x65, 0x22, 0x35, 0x31, 0x70, 0x23, 0x73, 0x64, 0x63, 0x99, 0xca, 0xca,
+        0x8b, 0x98, 0x8d, 0x9b, 0x9b, 0x99, 0xca, 0xca, 0x8b, 0xe7
+};
+_DWORD rowMask[] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0 };
+_DWORD colMask[] = { 0xFFFFFFFF, 0, 1, 0, 0xFFFFFFFF, 0, 1, 0, 0xFFFFFFFF, 0, 1, 0, 0, 0, 0, 0 };
+static char* __fastcall Init_maze(char** maze, int row, int col)
+{
+    int i; // [rsp+14h] [rbp-3Ch]
+    int j; // [rsp+18h] [rbp-38h]
+    int k; // [rsp+1Ch] [rbp-34h]
+
+    for (i = 0; i <= 2; ++i)
+        maze[row - 1][col - 1 + i] = Set_maze(encryptedMaze, rowMask[i] + row, colMask[i] + col);
+    for (j = 4; j <= 6; ++j)
+        maze[row][col - 1 + j - 4] = Set_maze(encryptedMaze, rowMask[j] + row, colMask[j] + col);
+    for (k = 8; k <= 10 ; ++k)
+        maze[row + 1][col - 1 + k - 8] = Set_maze(encryptedMaze, rowMask[k] + row, colMask[k] + col);
+    return 0;
+}
+typedef struct _stPOS
+{
+	int x;
+	int y;
+} stPOS;
+static BOOL NextW(const char** maze, stPOS start, stPOS end, char* path, int pathCnt);
+static BOOL NextA(const char** maze, stPOS start, stPOS end, char* path, int pathCnt);
+static BOOL NextS(const char** maze, stPOS start, stPOS end, char* path, int pathCnt);
+static BOOL NextD(const char** maze, stPOS start, stPOS end, char* path, int pathCnt);
+static BOOL NextW(const char** maze, stPOS start, stPOS end, char* path, int pathCnt)
+{
+    BOOL result = FALSE;
+	path[pathCnt++] = 'w';
+	start.x -= 1;
+    if (start.x > 0 && maze[start.x - 1][start.y] != '1')
+    {
+        int ret = NextW(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y > 0 && maze[start.x][start.y - 1] != '1')
+    {
+        int ret = NextA(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y < end.y && maze[start.x][start.y + 1] != '1')
+    {
+        int ret = NextD(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+
+	return FALSE;
+}
+static BOOL NextD(const char** maze, stPOS start, stPOS end, char* path, int pathCnt)
+{
+    BOOL result = FALSE;
+    path[pathCnt++] = 'd';
+    start.y += 1;
+    if (start.x == end.x && start.y == end.y)
+    {
+        path[pathCnt] = 0;
+        printf("path:%s\npathCnt:%d", path, pathCnt);
+		return TRUE;
+    }
+    if (start.x > 0 && maze[start.x - 1][start.y] != '1')
+    {
+        int ret = NextW(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.x < end.x && maze[start.x + 1][start.y] != '1')
+    {
+        int ret = NextS(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y < end.y && maze[start.x][start.y + 1] != '1')
+    {
+        int ret = NextD(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    return FALSE;
+}
+static BOOL NextA(const char** maze, stPOS start, stPOS end, char* path, int pathCnt)
+{
+    BOOL result = FALSE;
+    path[pathCnt++] = 'a';
+    start.y -= 1;
+
+    if (start.x > 0 && maze[start.x - 1][start.y] != '1')
+    {
+        int ret = NextW(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.x < end.x && maze[start.x + 1][start.y] != '1')
+    {
+        int ret = NextS(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y > 0 && maze[start.x][start.y - 1] != '1')
+    {
+        int ret = NextA(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    return FALSE;
+}
+static BOOL NextS(const char** maze, stPOS start, stPOS end, char* path, int pathCnt)
+{
+    BOOL result = FALSE;
+    path[pathCnt++] = 's';
+    start.x += 1;
+    if (start.x == end.x && start.y == end.y)
+    {
+        path[pathCnt] = 0;
+        printf("path:%s\npathCnt:%d", path, pathCnt);
+        return TRUE;
+    }
+    if (start.x < end.x && maze[start.x + 1][start.y] != '1')
+    {
+        int ret = NextS(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y > 0 && maze[start.x][start.y - 1] != '1')
+    {
+        int ret = NextA(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (start.y < end.y && maze[start.x][start.y + 1] != '1')
+    {
+        int ret = NextD(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    return FALSE;
+}
+static BOOL findPath(const char** maze, stPOS start, stPOS end, char* path, int pathCnt)
+{
+    BOOL result = FALSE;
+    if (maze[start.x - 1][start.y] != '1')
+    {
+        int ret = NextW(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (maze[start.x + 1][start.y] != '1')
+    {
+        int ret = NextS(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (maze[start.x][start.y - 1] != '1')
+    {
+        int ret = NextA(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+    if (maze[start.x][start.y + 1] != '1')
+    {
+        int ret = NextD(maze, start, end, path, pathCnt);
+        if (ret)
+        {
+
+        }
+        result |= ret;
+    }
+
+	return 0;
+}
 int main(void)
 {
     system("chcp 65001");
-     unsigned char crc[4] = { 0 };
-     unsigned int dword_455DF0[] = { 0xF35AF301, 0x4BA5308F, 0x3E78B787, 0x3B28EDC8, 0x5D9D9334, 0x69B78D4C, 0x6AA9CE9E, 0x0E8DC9EF8, 0x0AB3FA2AE, 0x0A41A08D1, 0x182E4462, 0x7D6A8455, 0x0EB85AD5D, 0x4051D52F, 0x0A8C782C2, 0x0D5E8EB10, 0x2F80CE14, 0x811C88D7 };
+    // unsigned char crc[4] = { 0 };
+    // unsigned int dword_455DF0[] = { 0xF35AF301, 0x4BA5308F, 0x3E78B787, 0x3B28EDC8, 0x5D9D9334, 0x69B78D4C, 0x6AA9CE9E, 0x0E8DC9EF8, 0x0AB3FA2AE, 0x0A41A08D1, 0x182E4462, 0x7D6A8455, 0x0EB85AD5D, 0x4051D52F, 0x0A8C782C2, 0x0D5E8EB10, 0x2F80CE14, 0x811C88D7 };
 
-     unsigned int calc_455DF0[18] = { 0 };
+    // unsigned int calc_455DF0[18] = { 0 };
 
-     const char pKey[] = "DEADBEEF";
+    // const char pKey[] = "DEADBEEF";
 
-     unsigned int pKey2[2] = { 0 };
+    // unsigned int pKey2[2] = { 0 };
 
-     pKey2[0] = pKey[0] << 24 | pKey[1] << 16 | pKey[2] << 8 | pKey[3];
-     pKey2[1] = pKey[4] << 24 | pKey[5] << 16 | pKey[6] << 8 | pKey[7];
-     for (int i = 0;i < 18;i++)
-     {
-         calc_455DF0[i] = dword_455DF0[i] ^ pKey2[i % 2];
-     }
+    // pKey2[0] = pKey[0] << 24 | pKey[1] << 16 | pKey[2] << 8 | pKey[3];
+    // pKey2[1] = pKey[4] << 24 | pKey[5] << 16 | pKey[6] << 8 | pKey[7];
+    // for (int i = 0;i < 18;i++)
+    // {
+    //     calc_455DF0[i] = dword_455DF0[i] ^ pKey2[i % 2];
+    // }
 
-     unsigned int v29[2] = { 0 };
-     for (int i = 0; i < 0x12; i += 2)
-     {
-         sub_448710(calc_455DF0, v29);
-         calc_455DF0[i] = v29[0];
-         calc_455DF0[i + 1] = v29[1];
-     }
-     for (int i = 0; i < 1024; i += 2)
-     {
-         sub_448710(calc_455DF0, v29);
-         dword_455E38[i] = v29[0];
-         dword_455E38[i + 1] = v29[1];
-     }
+    // unsigned int v29[2] = { 0 };
+    // for (int i = 0; i < 0x12; i += 2)
+    // {
+    //     sub_448710(calc_455DF0, v29);
+    //     calc_455DF0[i] = v29[0];
+    //     calc_455DF0[i + 1] = v29[1];
+    // }
+    // for (int i = 0; i < 1024; i += 2)
+    // {
+    //     sub_448710(calc_455DF0, v29);
+    //     dword_455E38[i] = v29[0];
+    //     dword_455E38[i + 1] = v29[1];
+    // }
 
-     unsigned char crcReal[8] = { 0 };
-     unsigned int sign[4] = { 0 };
-     GetSign("KCTF", sign);
-     unsigned char encDest[16] = { 0 };
-     *((unsigned int *)crc) = sign[0] ^ sign[1] ^ sign[2] ^ sign[3];
-     int flag = 1;
-     if (flag)
-     {
-         unsigned int tmp = 0;
-         for (int i = 0; i < 9;i++)
-         {
-             tmp = calc_455DF0[i];
-             calc_455DF0[i] = calc_455DF0[17 - i];
-             calc_455DF0[17 - i] = tmp;
-         }
-     }
-     flag = 1;
-     memcpy(crcReal, crc, 4);
-     sign[0] ^= *((unsigned int*)crcReal);
-     sign[1] ^= *((unsigned int*)(crcReal + 4));
-     sub_448710(calc_455DF0, sign);
-     memcpy(crcReal, sign, 8);
-     sign[2] ^= *((unsigned int*)crcReal);
-     sign[3] ^= *((unsigned int*)(crcReal + 4));
-     sub_448710(calc_455DF0, sign + 2);
-     memcpy(encDest, sign, 16);
-     _WORD Xorkey = 0x011B;
-     for (int i = 0;i < 16;i++)
-     {
-         unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
-         printf("%02X, %02X\n", encDest[i], ret);
-         encDest[i] = ret;
-     }
+    // unsigned char crcReal[8] = { 0 };
+    // unsigned int sign[4] = { 0 };
+    // GetSign("KCTF", sign);
+    // unsigned char encDest[16] = { 0 };
+    // *((unsigned int *)crc) = sign[0] ^ sign[1] ^ sign[2] ^ sign[3];
+    // int flag = 1;
+    // if (flag)
+    // {
+    //     unsigned int tmp = 0;
+    //     for (int i = 0; i < 9;i++)
+    //     {
+    //         tmp = calc_455DF0[i];
+    //         calc_455DF0[i] = calc_455DF0[17 - i];
+    //         calc_455DF0[17 - i] = tmp;
+    //     }
+    // }
+    // flag = 1;
+    // memcpy(crcReal, crc, 4);
+    // sign[0] ^= *((unsigned int*)crcReal);
+    // sign[1] ^= *((unsigned int*)(crcReal + 4));
+    // sub_448710(calc_455DF0, sign);
+    // memcpy(crcReal, sign, 8);
+    // sign[2] ^= *((unsigned int*)crcReal);
+    // sign[3] ^= *((unsigned int*)(crcReal + 4));
+    // sub_448710(calc_455DF0, sign + 2);
+    // memcpy(encDest, sign, 16);
+    // _WORD Xorkey = 0x011B;
+    // for (int i = 0;i < 16;i++)
+    // {
+    //     unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
+    //     printf("%02X, %02X\n", encDest[i], ret);
+    //     encDest[i] = ret;
+    // }
 
-     for (int i = 0;i < 4;i++)
-     {
-         unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
-         printf("%02X, %02X\n", crc[i], ret);
-         crc[i] = ret;
-     }
+    // for (int i = 0;i < 4;i++)
+    // {
+    //     unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
+    //     printf("%02X, %02X\n", crc[i], ret);
+    //     crc[i] = ret;
+    // }
 
-     unsigned char base32Decode[20] = { 0 };
-     memcpy(base32Decode + 16, crc, 4);
+    // unsigned char base32Decode[20] = { 0 };
+    // memcpy(base32Decode + 16, crc, 4);
 
-     unsigned char key[] = "Security@Tencent";
-     sm4_context ctx;
-     sm4_setkey_dec(&ctx, key);
-     sm4_crypt_ecb(&ctx, SM4_DECRYPT, 16, encDest, base32Decode);
-     size_t encodeLen = Base32_Encode(base32Decode, 20, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-     char* base32EncodeStr = (char*)malloc(encodeLen + 1);
-     if (base32EncodeStr)
-     {
-         memset(base32EncodeStr, 0, encodeLen + 1);
-         Base32_Encode(base32Decode, 20, base32EncodeStr, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-		 char code[36] = { 0 };
-		 code[8] = '-';
-		 code[17] = '-';
-		 code[26] = '-';
-		 memcpy(code, base32EncodeStr, 8);
-		 memcpy(code + 9, base32EncodeStr + 8, 8);
-		 memcpy(code + 18, base32EncodeStr + 16, 8);
-		 memcpy(code + 27, base32EncodeStr + 24, 8);
-         printf("%s\n", base32EncodeStr);
-         printf("%s\n", code);
-         size_t decode_len = Base32_Decode(base32EncodeStr, encodeLen, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-         unsigned char* decDest = (unsigned char*)malloc(decode_len);
-         if(decDest)
-         {
-             Base32_Decode(base32EncodeStr, encodeLen, decDest, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
-             for (size_t i = 0; i < decode_len; i++)
-             {
-                 printf("%02X ", decDest[i]);
-             }
-             printf("\n");
+    // unsigned char key[] = "Security@Tencent";
+    // sm4_context ctx;
+    // sm4_setkey_dec(&ctx, key);
+    // sm4_crypt_ecb(&ctx, SM4_DECRYPT, 16, encDest, base32Decode);
+    // size_t encodeLen = Base32_Encode(base32Decode, 20, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+    // char* base32EncodeStr = (char*)malloc(encodeLen + 1);
+    // if (base32EncodeStr)
+    // {
+    //     memset(base32EncodeStr, 0, encodeLen + 1);
+    //     Base32_Encode(base32Decode, 20, base32EncodeStr, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+    //     char code[36] = { 0 };
+    //     code[8] = '-';
+    //     code[17] = '-';
+    //     code[26] = '-';
+    //     memcpy(code, base32EncodeStr, 8);
+    //     memcpy(code + 9, base32EncodeStr + 8, 8);
+    //     memcpy(code + 18, base32EncodeStr + 16, 8);
+    //     memcpy(code + 27, base32EncodeStr + 24, 8);
+    //     printf("%s\n", base32EncodeStr);
+    //     printf("%s\n", code);
+    //     size_t decode_len = Base32_Decode(base32EncodeStr, encodeLen, NULL, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+    //     unsigned char* decDest = (unsigned char*)malloc(decode_len);
+    //     if(decDest)
+    //     {
+    //         Base32_Decode(base32EncodeStr, encodeLen, decDest, "ABCDEFGHJKMNPQRSTVWXYZ1234567890");
+    //         for (size_t i = 0; i < decode_len; i++)
+    //         {
+    //             printf("%02X ", decDest[i]);
+    //         }
+    //         printf("\n");
 
-             sm4_setkey_enc(&ctx, key);
-             int encLen = sm4_crypt_ecb(&ctx, SM4_ENCRYPT, 16, decDest, encDest);
-             for (int i = 0; i < 16; i++)
-             {
-                 unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
-                 printf("%02X, %02X\n", encDest[i], ret);
-                 encDest[i] = ret;
-             }
+    //         sm4_setkey_enc(&ctx, key);
+    //         int encLen = sm4_crypt_ecb(&ctx, SM4_ENCRYPT, 16, decDest, encDest);
+    //         for (int i = 0; i < 16; i++)
+    //         {
+    //             unsigned char ret = sub_4486D0(&Xorkey, encDest[i]);
+    //             printf("%02X, %02X\n", encDest[i], ret);
+    //             encDest[i] = ret;
+    //         }
 
-             for (int i = 0; i < 4; i++)
-             {
-                 unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
-                 printf("%02X, %02X\n", crc[i], ret);
-                 crc[i] = ret;
-             }
+    //         for (int i = 0; i < 4; i++)
+    //         {
+    //             unsigned char ret = sub_4486D0(&Xorkey, crc[i]);
+    //             printf("%02X, %02X\n", crc[i], ret);
+    //             crc[i] = ret;
+    //         }
 
-             if (flag)
-             {
-                 unsigned int tmp = 0;
-                 for (int i = 0; i < 9; i++)
-                 {
-                     tmp = calc_455DF0[i];
-                     calc_455DF0[i] = calc_455DF0[17 - i];
-                     calc_455DF0[17 - i] = tmp;
-                 }
-                 flag = 1;
-             }
-             memset(crcReal, 0, 8);
-             memcpy(crcReal, crc, 4);
-             memcpy(sign, encDest, 16);
-             sub_448710(calc_455DF0, sign);
-             sign[0] ^= *((unsigned int*)crcReal);
-             sign[1] ^= *((unsigned int*)(crcReal + 4));
-             memcpy(crcReal, encDest, 8);
-             sub_448710(calc_455DF0, sign + 2);
-             sign[2] ^= *((unsigned int*)crcReal);
-             sign[3] ^= *((unsigned int*)(crcReal + 4));
-             free(decDest);
-             printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
-         }
-         free(base32EncodeStr);
-     }
-    return 0;
-}
-
-/****************************** MACROS ******************************/
-#define NEWLINE_INVL 76
-
-/**************************** VARIABLES *****************************/
-// Note: To change the charset to a URL encoding, replace the '+' and '/' with '*' and '-'
-//static const unsigned char charset[] = { "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" };
-static const unsigned char charset[] = { "[@WP!3C75LfM8iwR2UO;(N>A6*&ut%#SIBhY1$j|kD{]0lx,.md9<4HayrzbXsg_" };
-
-/*********************** FUNCTION DEFINITIONS ***********************/
-static unsigned char revchar(char ch)
-{
-	for (int i = 0; i < 64; i++)
+    //         if (flag)
+    //         {
+    //             unsigned int tmp = 0;
+    //             for (int i = 0; i < 9; i++)
+    //             {
+    //                 tmp = calc_455DF0[i];
+    //                 calc_455DF0[i] = calc_455DF0[17 - i];
+    //                 calc_455DF0[17 - i] = tmp;
+    //             }
+    //             flag = 1;
+    //         }
+    //         memset(crcReal, 0, 8);
+    //         memcpy(crcReal, crc, 4);
+    //         memcpy(sign, encDest, 16);
+    //         sub_448710(calc_455DF0, sign);
+    //         sign[0] ^= *((unsigned int*)crcReal);
+    //         sign[1] ^= *((unsigned int*)(crcReal + 4));
+    //         memcpy(crcReal, encDest, 8);
+    //         sub_448710(calc_455DF0, sign + 2);
+    //         sign[2] ^= *((unsigned int*)crcReal);
+    //         sign[3] ^= *((unsigned int*)(crcReal + 4));
+    //         free(decDest);
+    //         printf("%08X-%08X-%08X-%08X\n", sign[0], sign[1], sign[2], sign[3]);
+    //     }
+    //     free(base32EncodeStr);
+    //}
+    char ** maze = (char**)malloc(99 * sizeof(char*));
+    if (maze)
     {
-        if (ch == charset[i])
-            return i;
+		memset(maze, 0, 99 * sizeof(char*));
+		for (int i = 0; i < 99; i++)
+        {
+            maze[i] = (char*)malloc(100);
+            if (maze[i])
+            {
+                memset(maze[i], 48, 100);
+                maze[i][99] = 0;
+            }
+        }
+		for (int i = 1; i < 99; i = i + 3)
+        {
+            for (int j = 1; j < 99; j = j + 3)
+            {
+                Init_maze(maze, i, j);
+            }
+        }
+        for (int i = 0; i < 99; i++)
+            printf("%s\n", maze[i]);
+		stPOS start = { 1, 1 };
+		stPOS end = { 97, 97 };
+		char path[2048] = { 0 };
+		int pathCnt = 0;
+		findPath((const char**)maze, start, end, path, 0);
+        for (int i = 0; i < 99; i++)
+        {
+            if (maze[i])
+                free(maze[i]);
+        }
+        free(maze);
     }
     return 0;
+
 }
-static size_t base64_decode(const char in[], unsigned char out[], size_t len)
-{
-    size_t idx, idx2, blks, blk_ceiling, left_over;
 
-    if (in[len - 1] == '=')
-        len--;
-    if (in[len - 1] == '=')
-        len--;
-
-    blks = len / 4;
-    left_over = len % 4;
-
-    if (out == nullptr) {
-        if (len >= 77 && in[NEWLINE_INVL] == '\n')   // Verify that newlines where used.
-            len -= len / (NEWLINE_INVL + 1);
-        blks = len / 4;
-        left_over = len % 4;
-
-        idx = blks * 3;
-        if (left_over == 2)
-            idx++;
-        else if (left_over == 3)
-            idx += 2;
-    }
-    else {
-        blk_ceiling = blks * 4;
-        for (idx = 0, idx2 = 0; idx2 < blk_ceiling; idx += 3, idx2 += 4) {
-            if (in[idx2] == '\n')
-                idx2++;
-            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
-            out[idx + 1] = (revchar(in[idx2 + 1]) << 4) | (revchar(in[idx2 + 2]) >> 2);
-            out[idx + 2] = (revchar(in[idx2 + 2]) << 6) | revchar(in[idx2 + 3]);
-        }
-
-        if (left_over == 2) {
-            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
-            idx++;
-        }
-        else if (left_over == 3) {
-            out[idx] = (revchar(in[idx2]) << 2) | ((revchar(in[idx2 + 1]) & 0x30) >> 4);
-            out[idx + 1] = (revchar(in[idx2 + 1]) << 4) | (revchar(in[idx2 + 2]) >> 2);
-            idx += 2;
-        }
-    }
-
-    return(idx);
-}
