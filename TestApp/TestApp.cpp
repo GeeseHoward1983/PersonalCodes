@@ -713,6 +713,7 @@ static void GetSign(const char* name, unsigned int* sign)
 }
 
 //TencentPediyKeygenMe2
+#include "MD5.h"
 static unsigned char __fastcall decrypt_maze(unsigned char* encryptedMaze, int realPos)
 {
     _BYTE Key[] = "tgrddf55";
@@ -844,28 +845,16 @@ static BOOL NextW(const char** maze, stPOS start, stPOS end, char* path, int pat
     if (start.x > 0 && maze[start.x - 1][start.y] != '1')
     {
         int ret = NextW(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y > 0 && maze[start.x][start.y - 1] != '1')
     {
         int ret = NextA(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y < end.y && maze[start.x][start.y + 1] != '1')
     {
         int ret = NextD(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
 
@@ -885,28 +874,16 @@ static BOOL NextD(const char** maze, stPOS start, stPOS end, char* path, int pat
     if (start.x > 0 && maze[start.x - 1][start.y] != '1')
     {
         int ret = NextW(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.x < end.x && maze[start.x + 1][start.y] != '1')
     {
         int ret = NextS(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y < end.y && maze[start.x][start.y + 1] != '1')
     {
         int ret = NextD(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     return FALSE;
@@ -920,28 +897,16 @@ static BOOL NextA(const char** maze, stPOS start, stPOS end, char* path, int pat
     if (start.x > 0 && maze[start.x - 1][start.y] != '1')
     {
         int ret = NextW(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.x < end.x && maze[start.x + 1][start.y] != '1')
     {
         int ret = NextS(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y > 0 && maze[start.x][start.y - 1] != '1')
     {
         int ret = NextA(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     return FALSE;
@@ -954,34 +919,22 @@ static BOOL NextS(const char** maze, stPOS start, stPOS end, char* path, int pat
     if (start.x == end.x && start.y == end.y)
     {
         path[pathCnt] = 0;
-        printf("path:%s\npathCnt:%d", path, pathCnt);
+        printf("path:%s\npathCnt:%d\n", path, pathCnt);
         return TRUE;
     }
     if (start.x < end.x && maze[start.x + 1][start.y] != '1')
     {
         int ret = NextS(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y > 0 && maze[start.x][start.y - 1] != '1')
     {
         int ret = NextA(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (start.y < end.y && maze[start.x][start.y + 1] != '1')
     {
         int ret = NextD(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     return FALSE;
@@ -992,37 +945,21 @@ static BOOL findPath(const char** maze, stPOS start, stPOS end, char* path, int 
     if (maze[start.x - 1][start.y] != '1')
     {
         int ret = NextW(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (maze[start.x + 1][start.y] != '1')
     {
         int ret = NextS(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (maze[start.x][start.y - 1] != '1')
     {
         int ret = NextA(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
     if (maze[start.x][start.y + 1] != '1')
     {
         int ret = NextD(maze, start, end, path, pathCnt);
-        if (ret)
-        {
-
-        }
         result |= ret;
     }
 
