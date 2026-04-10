@@ -1202,15 +1202,19 @@ int main(void)
             printf("%s\n", maze[i]);
 		stPOS start = { 1, 1 };
 		stPOS end = { 97, 97 };
-		char path[2048] = { 0 };
+        char path[97 * 97 + 1] = { 0 };
 		int pathCnt = 0;
 		findPath((const char**)maze, start, end, path, 0);
         for (int i = 0; i < 99; i++)
         {
             if (maze[i])
+            {
                 free(maze[i]);
+				maze[i] = NULL;
+            }
         }
         free(maze);
+		maze = NULL;
     }
     return 0;
 
